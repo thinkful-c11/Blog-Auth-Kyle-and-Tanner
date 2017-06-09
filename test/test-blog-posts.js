@@ -3,53 +3,50 @@ const chaiHttp = require('chai-http');
 const faker = require('faker');
 const mongoose = require('mongoose');
 
-// this makes the should syntax available throughout
-// this module
-const should = chai.should();
-
-const {DATABASE_URL} = require('../config');
-const {BlogPost} = require('../models');
+const {BlogPost, Users} = require('../models');
 const {closeServer, runServer, app} = require('../server');
 const {TEST_DATABASE_URL} = require('../config');
 
+const should = chai.should();
 chai.use(chaiHttp);
 
-// this function deletes the entire database.
-// we'll call it in an `afterEach` block below
-// to ensure  ata from one test does not stick
-// around for next one
+function createAuthorizedUser() {
+  const user = {
+    username: "cashmeousside",
+    firstName: "Sally",
+    lastName: "Asshole",
+    password: "$2a$10$3dbXDMQ1eBWoG/5NqEHspud.V9ktIeZPEHhJHf3NsRCru2K3XIsHO",
+  };
+  Users.create(user);
+}
+
 function tearDownDb() {
   return new Promise((resolve, reject) => {
     console.warn('Deleting database');
     mongoose.connection.dropDatabase()
       .then(result => resolve(result))
-      .catch(err => reject(err))
+      .catch(err => reject(err));
   });
 }
 
-
-// used to put randomish documents in db
-// so we have data to work with and assert about.
-// we use the Faker library to automatically
-// generate placeholder values for author, title, content
-// and then we insert that data into mongo
-function seedBlogPostData() {
+function seedData() {
   console.info('seeding blog post data');
-  const seedData = [];
-  for (let i=1; i<=10; i++) {
-    seedData.push({
+  const seedPosts = [];
+  
+  for (let i = 1; i <= 10; i++) {
+    seedPosts.push({
       author: {
-        firstName: faker.name.firstName(),
-        lastName: faker.name.lastName()
+        firstName: faker.name.firstName,
+        lastName: faker.name.lastName
       },
       title: faker.lorem.sentence(),
       content: faker.lorem.text()
     });
   }
-  // this will return a promise
-  return BlogPost.insertMany(seedData);
+  
+  // Users.insertMany(seedUsers);
+  return BlogPost.insertMany(seedPosts);
 }
-
 
 describe('blog posts API resource', function() {
 
@@ -58,7 +55,7 @@ describe('blog posts API resource', function() {
   });
 
   beforeEach(function() {
-    return seedBlogPostData();
+    return seedData();
   });
 
   afterEach(function() {
@@ -135,7 +132,7 @@ describe('blog posts API resource', function() {
     // then prove that the post we get back has
     // right keys, and that `id` is there (which means
     // the data was inserted into db)
-    it('should add a new blog post', function() {
+    it.only('should add a new blog post', function() {
 
       const newPost = {
           title: faker.lorem.sentence(),
@@ -145,11 +142,15 @@ describe('blog posts API resource', function() {
           },
           content: faker.lorem.text()
       };
+      
+
 
       return chai.request(app)
         .post('/posts')
+        .auth("cashmeousside", "password")
         .send(newPost)
         .then(function(res) {
+          console.log(res);
           res.should.have.status(201);
           res.should.be.json;
           res.body.should.be.a('object');
