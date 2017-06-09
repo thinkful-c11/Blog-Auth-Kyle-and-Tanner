@@ -23,12 +23,14 @@ const basicStrategy = new BasicStrategy((username, password, callback)=>{
           return user.validatePassword(password);
         })
         .then(isValid => {
+          if(!user){
+            return null;
+          }
           if (!isValid){
             return callback(null, false);
           }
-          else {
-            return callback(null, user);
-          }
+          
+          return callback(null, user);
         })
         .catch(err => callback(err));
 });

@@ -150,7 +150,7 @@ describe('blog posts API resource', function() {
         content: faker.lorem.text()
       };
       let userBody;
-     await Users.findOne().then(function (res){ userBody = res;}); 
+      await Users.findOne().then(function (res){ userBody = res;}); 
       return chai.request(app)
         .post('/posts')
         .auth(userBody.username, 'password')
@@ -174,6 +174,25 @@ describe('blog posts API resource', function() {
           post.content.should.equal(newPost.content);
           post.author.firstName.should.equal(`${userBody.firstName}`);
           post.author.lastName.should.equal(`${userBody.lastName}`);
+        });
+    });
+    
+    it('should NOT add a new blog post with invalid creditials', async function() {
+      const newPost = {
+        title: faker.lorem.sentence(),
+        content: faker.lorem.text()
+      };
+      
+      let userBody;
+      await Users.findOne().then(function (res){ userBody = res;}); 
+      return chai.request(app)
+        .post('/posts')
+        .auth('asdfsadf', 'asdfasdf')
+        .send(newPost)
+        .then(function(res) {
+          res.should.not.have.status(201);
+        }).catch(err => {
+          return err.should.have.status(401);
         });
     });
     
@@ -243,6 +262,25 @@ describe('blog posts API resource', function() {
           post.author.lastName.should.equal(userBody.lastName);
         });
     });
+    
+    it('should update a blog post with invalid creditials', async function() {
+      const newPost = {
+        title: faker.lorem.sentence(),
+        content: faker.lorem.text()
+      };
+      
+      let userBody;
+      await Users.findOne().then(function (res){ userBody = res;}); 
+      return chai.request(app)
+        .put(`/posts/${userBody._id}`)
+        .auth('asdfsadf', 'asdfasdf')
+        .send(newPost)
+        .then(function(res) {
+          res.status.should.not.be(201)
+        }).catch(err => {
+          return err.should.have.status(401);
+        });
+    });
   });
 
   describe('DELETE endpoint', function() {
@@ -273,6 +311,25 @@ describe('blog posts API resource', function() {
           // an error. `should.be.null(_post)` is how we can
           // make assertions about a null value.
           should.not.exist(_post);
+        });
+    });
+    
+    it('should update a blog post with invalid creditials', async function() {
+      let post;
+      let userBody;
+      await Users.findOne().then(res=> userBody = res);
+      return BlogPost
+        .findOne()
+        .exec()
+        .then(_post => {
+          post = _post;
+          return chai.request(app).delete(`/posts/${post.id}`).auth('laksdfj', 'asdfasdf');
+        })
+        .then(res => {
+          res.should.not.have.status(204);
+        })
+        .catch(err => {
+          err.should.have.status(401);
         });
     });
   });
