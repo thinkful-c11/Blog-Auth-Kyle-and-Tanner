@@ -10,15 +10,15 @@ const {TEST_DATABASE_URL} = require('../config');
 const should = chai.should();
 chai.use(chaiHttp);
 
-function createAuthorizedUser() {
+const genUser = ()=>{
   const user = {
-    username: "cashmeousside",
-    firstName: "Sally",
-    lastName: "Asshole",
-    password: "$2a$10$3dbXDMQ1eBWoG/5NqEHspud.V9ktIeZPEHhJHf3NsRCru2K3XIsHO",
+    username: faker.address.country(),
+    firstName: faker.name.firstName(),
+    lastName: faker.name.lastName(),
+    password: '$2a$10$3dbXDMQ1eBWoG/5NqEHspud.V9ktIeZPEHhJHf3NsRCru2K3XIsHO',
   };
-  Users.create(user);
-}
+ Users.create(user);
+};
 
 function tearDownDb() {
   return new Promise((resolve, reject) => {
@@ -29,21 +29,34 @@ function tearDownDb() {
   });
 }
 
+genUser();
+
 function seedData() {
+  let userBody;
   console.info('seeding blog post data');
   const seedPosts = [];
-  
-  for (let i = 1; i <= 10; i++) {
+  Users.findOne().then(res => userBody = res);
+  console.log("THIS IS IT", userBody.firstName);
+  for (let i = 1; i <= 2; i++) {
     seedPosts.push({
       author: {
-        firstName: faker.name.firstName,
-        lastName: faker.name.lastName
+        firstName: userBody.firstName,
+        lastName: userBody.lastName
       },
       title: faker.lorem.sentence(),
       content: faker.lorem.text()
     });
   }
-  
+  for (let i = 1; i <= 8; i++) {
+    seedPosts.push({
+      author: {
+        firstName: faker.name.firstName(),
+        lastName: faker.name.lastName()
+      },
+      title: faker.lorem.sentence(),
+      content: faker.lorem.text()
+    });
+  }
   // Users.insertMany(seedUsers);
   return BlogPost.insertMany(seedPosts);
 }
@@ -80,6 +93,7 @@ describe('blog posts API resource', function() {
       //    3. prove the number of posts we got back is equal to number
       //       in db.
       let res;
+
       return chai.request(app)
         .get('/posts')
         .then(_res => {
@@ -132,25 +146,20 @@ describe('blog posts API resource', function() {
     // then prove that the post we get back has
     // right keys, and that `id` is there (which means
     // the data was inserted into db)
-    it.only('should add a new blog post', function() {
+    it('should add a new blog post', function() {
 
       const newPost = {
-          title: faker.lorem.sentence(),
-          author: {
-            firstName: faker.name.firstName(),
-            lastName: faker.name.lastName(),
-          },
-          content: faker.lorem.text()
+        title: faker.lorem.sentence(),
+        content: faker.lorem.text()
       };
-      
-
-
+      let userBody;
+      Users.findOne().then(res =>userBody = res);  
       return chai.request(app)
         .post('/posts')
-        .auth("cashmeousside", "password")
+        .auth(userBody.username, 'password')
         .send(newPost)
         .then(function(res) {
-          console.log(res);
+          //console.log(res);
           res.should.have.status(201);
           res.should.be.json;
           res.body.should.be.a('object');
@@ -160,15 +169,15 @@ describe('blog posts API resource', function() {
           // cause Mongo should have created id on insertion
           res.body.id.should.not.be.null;
           res.body.author.should.equal(
-            `${newPost.author.firstName} ${newPost.author.lastName}`);
+            `${userBody.firstName} ${userBody.lastName}`);
           res.body.content.should.equal(newPost.content);
           return BlogPost.findById(res.body.id).exec();
         })
         .then(function(post) {
           post.title.should.equal(newPost.title);
           post.content.should.equal(newPost.content);
-          post.author.firstName.should.equal(newPost.author.firstName);
-          post.author.lastName.should.equal(newPost.author.lastName);
+          post.author.firstName.should.equal(`${userBody.firstName}`);
+          post.author.lastName.should.equal(`${userBody.lastName}`);
         });
     });
   });
@@ -180,15 +189,14 @@ describe('blog posts API resource', function() {
     //  2. Make a PUT request to update that post
     //  3. Prove post returned by request contains data we sent
     //  4. Prove post in db is correctly updated
-    it('should update fields you send over', function() {
+    it.only('should update fields you send over', function() {
       const updateData = {
         title: 'cats cats cats',
         content: 'dogs dogs dogs',
-        author: {
-          firstName: 'foo',
-          lastName: 'bar'
-        }
       };
+      let userBody;
+      Users.findOne().then(res =>{ userBody = res; console.log(res); 
+    }); 
 
       return BlogPost
         .findOne()
@@ -198,6 +206,7 @@ describe('blog posts API resource', function() {
 
           return chai.request(app)
             .put(`/posts/${post.id}`)
+            .auth(userBody.username, 'password')
             .send(updateData);
         })
         .then(res => {
@@ -205,8 +214,6 @@ describe('blog posts API resource', function() {
           res.should.be.json;
           res.body.should.be.a('object');
           res.body.title.should.equal(updateData.title);
-          res.body.author.should.equal(
-            `${updateData.author.firstName} ${updateData.author.lastName}`);
           res.body.content.should.equal(updateData.content);
 
           return BlogPost.findById(res.body.id).exec();
@@ -214,8 +221,9 @@ describe('blog posts API resource', function() {
         .then(post => {
           post.title.should.equal(updateData.title);
           post.content.should.equal(updateData.content);
-          post.author.firstName.should.equal(updateData.author.firstName);
-          post.author.lastName.should.equal(updateData.author.lastName);
+          console.log(post.author);
+          post.author.firstName.should.equal(userBody.firstName);
+          post.author.lastName.should.equal(userBody.lastName);
         });
     });
   });

@@ -88,7 +88,7 @@ app.put('/posts/:id', passport.authenticate('basic', {session: false}), (req, re
   }
 
   const updated = {};
-  const updateableFields = ['title', 'content', 'author'];
+  const updateableFields = ['title', 'content'];
   updateableFields.forEach(field => {
     if (field in req.body) {
       updated[field] = req.body[field];

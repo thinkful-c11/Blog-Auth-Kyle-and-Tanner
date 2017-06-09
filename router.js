@@ -96,6 +96,13 @@ router.post('/', (req, res)=>{
         });
 });
 
+const thatMiddleware = (req, res, next) => {
+  if (!req.headers.Authorization) {
+    return res.sendStatus(401);
+  }
+  next();
+}
+
 router.get('/', passport.authenticate('basic', {session: false}), (req, res)=>{
   return Users
     .find()
